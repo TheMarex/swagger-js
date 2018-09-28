@@ -122,55 +122,54 @@ export function applySecurities({request, securities = {}, operation = {}, spec}
     return request
   }
 
-  security.forEach((securityObj, index) => {
-    for (const key in securityObj) {
-      const auth = authorized[key]
-      const schema = securityDef[key]
+  for (let i = 0; i < security.length; ++i) {
+    const key = security[i];
+    const auth = authorized[key]
+    const schema = securityDef[key]
 
-      if (!auth) {
-        continue
+    if (!auth) {
+      continue
+    }
+
+    const value = auth.value || auth
+    const {type} = schema
+
+    if (type === 'apiKey') {
+      if (schema.in === 'query') {
+        result.query[schema.name] = value
       }
-
-      const value = auth.value || auth
-      const {type} = schema
-
-      if (auth) {
-        if (type === 'apiKey') {
-          if (schema.in === 'query') {
-            result.query[schema.name] = value
-          }
-          if (schema.in === 'header') {
-            result.headers[schema.name] = value
-          }
-          if (schema.in === 'cookie') {
-            result.cookies[schema.name] = value
-          }
-        }
-        else if (type === 'http') {
-          if (schema.scheme === 'basic') {
-            const {username, password} = value
-            const encoded = btoa(`${username}:${password}`)
-            result.headers.Authorization = `Basic ${encoded}`
-          }
-
-          if (schema.scheme === 'bearer') {
-            result.headers.Authorization = `Bearer ${value}`
-          }
-        }
-        else if (type === 'oauth2') {
-          const token = auth.token || {}
-          const accessToken = token.access_token
-          let tokenType = token.token_type
-
-          if (!tokenType || tokenType.toLowerCase() === 'bearer') {
-            tokenType = 'Bearer'
-          }
-
-          result.headers.Authorization = `${tokenType} ${accessToken}`
-        }
+      if (schema.in === 'header') {
+        result.headers[schema.name] = value
+      }
+      if (schema.in === 'cookie') {
+        result.cookies[schema.name] = value
       }
     }
-  })
+    else if (type === 'http') {
+      if (schema.scheme === 'basic') {
+        const {username, password} = value
+        const encoded = btoa(`${username}:${password}`)
+        result.headers.Authorization = `Basic ${encoded}`
+      }
+
+      if (schema.scheme === 'bearer') {
+        result.headers.Authorization = `Bearer ${value}`
+      }
+    }
+    else if (type === 'oauth2') {
+      const token = auth.token || {}
+      const accessToken = token.access_token
+      let tokenType = token.token_type
+
+      if (!tokenType || tokenType.toLowerCase() === 'bearer') {
+        tokenType = 'Bearer'
+      }
+
+      result.headers.Authorization = `${tokenType} ${accessToken}`
+    }
+
+    break;
+  }
 
   return result
 }
